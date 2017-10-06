@@ -49,9 +49,11 @@ namespace DocumentFormat.OpenXml.ReportBuilder
             return GenerateReport(dataSet, ms, null, false);
         }
 
-        public static MemoryStream GenerateReport(DataSet dataSet, MemoryStream Template)
+        public static MemoryStream GenerateReport(DataSet dataSet, byte[] Template)
         {
-            return GenerateReport(dataSet, Template, null, false);
+            var ms = new MemoryStream(Template);
+
+            return GenerateReport(dataSet, ms, null, false);
         }
 
 
@@ -313,7 +315,7 @@ namespace DocumentFormat.OpenXml.ReportBuilder
                             }
                         }
                     }
-                    sharedStringTable.Save();
+                 //   sharedStringTable.Save();
                 }
 
                 //Заполняем выбраные ячейки selctRow даными с dataSet согласно формулам
@@ -730,7 +732,7 @@ namespace DocumentFormat.OpenXml.ReportBuilder
 
                                 cell.CellValue = new CellValue(i.ToString());
                                 cell.DataType.Value = CellValues.SharedString;
-                                sharedStringTable.Save();
+                     //           sharedStringTable.Save();
                             }
                         }
                     }
