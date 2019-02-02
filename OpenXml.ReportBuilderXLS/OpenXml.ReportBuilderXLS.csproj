@@ -52,18 +52,17 @@
     <CodeAnalysisRuleSet>AllRules.ruleset</CodeAnalysisRuleSet>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="DocumentFormat.OpenXml, Version=2.0.4725.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
+    <Reference Include="DocumentFormat.OpenXml, Version=2.0.5022.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\..\..\..\..\..\..\Program Files\Open XML SDK\V2.0\lib\DocumentFormat.OpenXml.dll</HintPath>
-      <Private>True</Private>
+      <HintPath>Lib\DocumentFormat.OpenXml.dll</HintPath>
     </Reference>
-    <Reference Include="DocumentFormat.OpenXml.Extensions, Version=2.1.3678.40469, Culture=neutral, PublicKeyToken=bebd372c505097f2, processorArchitecture=MSIL">
+    <Reference Include="DocumentFormat.OpenXml.Extensions, Version=2.1.3842.36318, Culture=neutral, PublicKeyToken=bebd372c505097f2, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\..\..\..\..\..\..\Program Files\Open XML SDK\V2.0\lib\DocumentFormat.OpenXml.Extensions.dll</HintPath>
+      <HintPath>Lib\DocumentFormat.OpenXml.Extensions.dll</HintPath>
     </Reference>
     <Reference Include="NCalc, Version=1.3.6.0, Culture=neutral, PublicKeyToken=973cde3f1cafed03, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\..\..\..\..\..\..\C# Project+Исходники\Parsers\NCalc.dll</HintPath>
+      <HintPath>Lib\NCalc.dll</HintPath>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core">
