@@ -272,94 +272,96 @@ namespace DocumentFormat.OpenXml.ReportBuilder
         //Создание отчета
         public static MemoryStream GenerateReport(DataSet dataSet, MemoryStream ms, string OutFile, bool protectionSheet)
         {
-            SpreadsheetDocument RecultDoc = SpreadsheetDocument.Open(ms, true);
-            sharedStringTable = RecultDoc.WorkbookPart.SharedStringTablePart.SharedStringTable;
-
-            UpdateSharedFormula( RecultDoc);
-
-            foreach (Sheet curSheet in RecultDoc.WorkbookPart.Workbook.Sheets)
+            using (SpreadsheetDocument RecultDoc = SpreadsheetDocument.Open(ms, true))
             {
-                WorksheetPart RecultWorkSheetPart = SpreadsheetReader.GetWorksheetPartByName(RecultDoc, curSheet.Name.Value);
-                SheetData sheetData = RecultWorkSheetPart.Worksheet.Elements<SheetData>().First();
+                sharedStringTable = RecultDoc.WorkbookPart.SharedStringTablePart != null ? RecultDoc.WorkbookPart.SharedStringTablePart.SharedStringTable : null;
 
-                // Получаем имена областей DefinedNames принадлежащих к текущему Sheet
-                List<DefinedName> dnList = new List<DefinedName>();
-                if (RecultDoc.WorkbookPart.Workbook.Elements<DefinedNames>().Count() > 0)
-                {
-                    dnList = RecultDoc.WorkbookPart.Workbook.Elements<DefinedNames>().First().Elements<DefinedName>()
-                                                                 .Where(d => d.Text.IndexOf("#REF!") < 0 && curSheet.Name.Value == d.Text.Substring(0, d.Text.IndexOf("!")).TrimEnd('\'').TrimStart('\'')).OrderBy(d => FirstRowInRange(d.Text.Substring(d.Text.IndexOf("!") + 1))).ToList();
-                }
+                UpdateSharedFormula(RecultDoc);
 
-                //Выбираем все строки с SheetData которые не принадлежат ни одному из DefinedName
-                List<Row> selctRow = new List<Row>(sheetData.Elements<Row>());
-                foreach (DefinedName DN in dnList)
+                foreach (Sheet curSheet in RecultDoc.WorkbookPart.Workbook.Sheets)
                 {
-                    string Range = GetRangeInDefName(DN);
-                    selctRow = selctRow.Where(r => r.RowIndex < FirstRowInRange(Range) || r.RowIndex > LastRowInRange(Range)).ToList();
-                }
+                    WorksheetPart RecultWorkSheetPart = SpreadsheetReader.GetWorksheetPartByName(RecultDoc, curSheet.Name.Value);
+                    SheetData sheetData = RecultWorkSheetPart.Worksheet.Elements<SheetData>().First();
 
-                if (sharedStringTable != null)
-                {
-                    int i = sharedStringTable.Count() - 1;
-                    foreach (Row curRow in selctRow)
+                    // Получаем имена областей DefinedNames принадлежащих к текущему Sheet
+                    List<DefinedName> dnList = new List<DefinedName>();
+                    if (RecultDoc.WorkbookPart.Workbook.Elements<DefinedNames>().Count() > 0)
                     {
-                        foreach (Cell curCell in curRow.Elements<Cell>().Where(c => c.DataType != null && c.DataType.Value == CellValues.SharedString))
-                        {
-                            var SharedString = sharedStringTable.ChildElements[Int32.Parse(curCell.CellValue.InnerText)].CloneNode(true);
-                            var parcing_Xml = ParcingCellValue(dataSet, null, SharedString.InnerXml);
-                            if (String.Compare(parcing_Xml, SharedString.InnerXml) > 0)
-                            {
-                                SharedString.InnerXml = parcing_Xml;
-                                sharedStringTable.Append(SharedString);
+                        dnList = RecultDoc.WorkbookPart.Workbook.Elements<DefinedNames>().First().Elements<DefinedName>()
+                                                                     .Where(d => d.Text.IndexOf("#REF!") < 0 && curSheet.Name.Value == d.Text.Substring(0, d.Text.IndexOf("!")).TrimEnd('\'').TrimStart('\'')).OrderBy(d => FirstRowInRange(d.Text.Substring(d.Text.IndexOf("!") + 1))).ToList();
+                    }
 
-                                curCell.CellValue = new CellValue((++i).ToString());
-                                curCell.DataType.Value = CellValues.SharedString;
+                    //Выбираем все строки с SheetData которые не принадлежат ни одному из DefinedName
+                    List<Row> selctRow = new List<Row>(sheetData.Elements<Row>());
+                    foreach (DefinedName DN in dnList)
+                    {
+                        string Range = GetRangeInDefName(DN);
+                        selctRow = selctRow.Where(r => r.RowIndex < FirstRowInRange(Range) || r.RowIndex > LastRowInRange(Range)).ToList();
+                    }
+
+                    if (sharedStringTable != null)
+                    {
+                        int i = sharedStringTable.Count() - 1;
+                        foreach (Row curRow in selctRow)
+                        {
+                            foreach (Cell curCell in curRow.Elements<Cell>().Where(c => c.DataType != null && c.DataType.Value == CellValues.SharedString))
+                            {
+                                var SharedString = sharedStringTable.ChildElements[Int32.Parse(curCell.CellValue.InnerText)].CloneNode(true);
+                                var parcing_Xml = ParcingCellValue(dataSet, null, SharedString.InnerXml);
+                                if (String.Compare(parcing_Xml, SharedString.InnerXml) > 0)
+                                {
+                                    SharedString.InnerXml = parcing_Xml;
+                                    sharedStringTable.Append(SharedString);
+
+                                    curCell.CellValue = new CellValue((++i).ToString());
+                                    curCell.DataType.Value = CellValues.SharedString;
+                                }
                             }
                         }
+                        sharedStringTable.Save();
                     }
-                    sharedStringTable.Save();
-                }
 
-                //Заполняем выбраные ячейки selctRow даными с dataSet согласно формулам
-                foreach (Row curRow in selctRow)
-                {
-                    foreach (Cell curCell in curRow.Elements<Cell>().Where(c => c.CellFormula != null))
+                    //Заполняем выбраные ячейки selctRow даными с dataSet согласно формулам
+                    foreach (Row curRow in selctRow)
                     {
-                        SetValueToCellFormula(dataSet, null, curCell);
+                        foreach (Cell curCell in curRow.Elements<Cell>().Where(c => c.CellFormula != null))
+                        {
+                            SetValueToCellFormula(dataSet, null, curCell);
+                        }
                     }
-                }
 
-                foreach (DefinedName definedName in dnList)
-                {
-                    DataTable dataTable = GetTableByName(dataSet, definedName.Name);
-                    if (dataTable != null)
+                    foreach (DefinedName definedName in dnList)
                     {
-                        string oldRange = GetRangeInDefName(definedName);
-                        UInt32 GlobalOffSet = SetValueFromDataTable(dataTable, dnList, RecultDoc);
-                        selctRow = sheetData.Elements<Row>().Where(r => r.RowIndex < FirstRowInRange(GetRangeInDefName(definedName)) || r.RowIndex > LastRowInRange(GetRangeInDefName(definedName))).ToList();
-                        UpdateFormulaWithoutRange(oldRange, selctRow, GlobalOffSet);
+                        DataTable dataTable = GetTableByName(dataSet, definedName.Name);
+                        if (dataTable != null)
+                        {
+                            string oldRange = GetRangeInDefName(definedName);
+                            UInt32 GlobalOffSet = SetValueFromDataTable(dataTable, dnList, RecultDoc);
+                            selctRow = sheetData.Elements<Row>().Where(r => r.RowIndex < FirstRowInRange(GetRangeInDefName(definedName)) || r.RowIndex > LastRowInRange(GetRangeInDefName(definedName))).ToList();
+                            UpdateFormulaWithoutRange(oldRange, selctRow, GlobalOffSet);
+                        }
                     }
-                }
 
-                if (protectionSheet) //Защита листа случайно сгенерированым паролем
-                {
-                    SheetProtection prch = new SheetProtection();
-                    prch.Password = Convert.ToString(new Random().Next(245, 12457));
-                    prch.Sheet = true;
-                    RecultWorkSheetPart.Worksheet.InsertAfter(prch, RecultWorkSheetPart.Worksheet.Elements<SheetData>().First());
-                }
+                    if (protectionSheet) //Защита листа случайно сгенерированым паролем
+                    {
+                        SheetProtection prch = new SheetProtection();
+                        prch.Password = Convert.ToString(new Random().Next(245, 12457));
+                        prch.Sheet = true;
+                        RecultWorkSheetPart.Worksheet.InsertAfter(prch, RecultWorkSheetPart.Worksheet.Elements<SheetData>().First());
+                    }
 
+                }
+                ClearSpreadsheetDocument(RecultDoc);
+
+                RecultDoc.Close();
+
+                if (OutFile != null)
+                    if (OutFile.Length > 0) SpreadsheetWriter.StreamToFile(OutFile, ms);
+
+                return ms;
             }
-            ClearSpreadsheetDocument(RecultDoc);
-
-            RecultDoc.Close();
-
-            if (OutFile != null)
-                if (OutFile.Length > 0) SpreadsheetWriter.StreamToFile(OutFile, ms);
-
-            return ms;
         }
-
+     
         private static string ParcingCellValue(DataSet dataSet, DataRow dataRow, string cell_value)
         {
             string RangeName = "";
